@@ -2720,8 +2720,9 @@ window.addEventListener('load', async () => {
         multiplayerInfo.innerHTML = '<p class="text-yellow-400 italic">Conectando ao servidor multiplayer...</p>';
 
         // O endereço 'ws://' ou 'wss://' do seu futuro servidor iria aqui.
-        // AGORA CONECTANDO AO NOSSO SERVIDOR LOCAL!
-        const socket = new WebSocket('ws://localhost:8081');
+        // AGORA CONECTANDO AO SERVIDOR ONLINE NO RENDER!
+        // IMPORTANTE: Substitua 'eldoria-server' pelo nome que você deu ao seu serviço no Render.
+        const socket = new WebSocket('wss://eldoria-cr-nicas-do-or-culo.onrender.com');
 
         socket.onopen = function(e) {
             console.log("[Multiplayer] Conexão estabelecida!");
