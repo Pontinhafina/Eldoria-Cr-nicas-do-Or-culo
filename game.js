@@ -165,7 +165,6 @@ let selectedClass = null;
 let skillPoints = 0;
 let preparedEnemy = null; // NOVO: Para o sistema de "Ameaça Iminente"
 let relationships = {};
-let gameMode = 'singleplayer';
 let storyMode = 'sandbox';
 let mainQuest = null;
 let sideQuests = [];
@@ -242,9 +241,6 @@ function saveCharacterProfile() {
     const selectedStoryModeCard = document.querySelector('.story-mode-card.selected');
     storyMode = selectedStoryModeCard ? selectedStoryModeCard.getAttribute('data-mode') : 'sandbox';
 
-    const selectedGameModeBtn = document.querySelector('#character-setup .mode-button.active');
-    gameMode = selectedGameModeBtn ? selectedGameModeBtn.getAttribute('id').replace('setup-', '').replace('-btn', '') : 'singleplayer';
-
     applyClassAttributes(role);
     const vitality = getClassVitality(role);
     
@@ -306,16 +302,9 @@ function saveCharacterProfile() {
     updateQuestsUI(); 
     updateRelationshipsUI();
     updateEquipmentUI(); // NOVO
-    updateReputationUI(); // NOVO
-    updateGameModeUI(); // NOVO: Atualiza a UI do modo de jogo
+    updateReputationUI();
     updateChatInputStatus();
     updateObjectiveTracker(); // NOVO
-    
-    // NOVO: Inicializa o modo multiplayer se selecionado
-    if (gameMode === 'multiplayer') {
-        initializeMultiplayer();
-    }
-
     document.getElementById('chat-area').innerHTML = '';
     startInitialStory();
     setMusicTrack('assets/music/the-epic-2-by-keys-of-moon.mp3');
@@ -2709,34 +2698,6 @@ window.addEventListener('load', async () => {
             worldActionsDropdown.classList.add('hidden');
         }
     });
-
-    // NOVO: Função para inicializar a conexão multiplayer
-    function initializeMultiplayer() {
-        const multiplayerInfo = document.getElementById('multiplayer-info');
-        multiplayerInfo.innerHTML = '<p class="text-yellow-400 italic">Conectando ao servidor multiplayer...</p>';
-
-        // O endereço 'ws://' ou 'wss://' do seu futuro servidor iria aqui.
-        // AGORA CONECTANDO AO SERVIDOR ONLINE NO RENDER!
-        // IMPORTANTE: Substitua 'eldoria-server' pelo nome que você deu ao seu serviço no Render.
-        const socket = new WebSocket('wss://eldoria-cr-nicas-do-or-culo.onrender.com');
-
-        socket.onopen = function(e) {
-            console.log("[Multiplayer] Conexão estabelecida!");
-            multiplayerInfo.innerHTML = '<p class="text-green-400 italic">Conectado ao servidor! (Modo Online)</p>';
-            // Aqui você enviaria os dados do seu personagem para o servidor
-            // socket.send(JSON.stringify({ type: 'JOIN_GAME', data: localCharacterProfile }));
-        };
-
-        socket.onmessage = function(event) {
-            console.log(`[Multiplayer] Dados recebidos do servidor: ${event.data}`);
-            // Aqui você processaria as atualizações do estado do jogo vindas do servidor
-        };
-
-        socket.onerror = function(error) {
-            console.error(`[Multiplayer] Erro no WebSocket: ${error.message}`);
-            multiplayerInfo.innerHTML = '<p class="text-red-500 italic">Falha ao conectar ao servidor.</p>';
-        };
-    }
 
     initializeGame();
 
