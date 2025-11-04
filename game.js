@@ -832,19 +832,27 @@ function processAIResponseForGameChanges(response) {
     }
 
     // Regex para Diálogo (não remove, apenas para garantir que não quebre)
+    // Regex para Diálogo. O texto é extraído e renderizado pela função addMessage,
+    // então removemos a tag para não aparecer no balão principal do Oráculo.
     const dialogueRegex = /\[DIALOGUE: "([^"]+)"\s*\|\s*"([^"]+)"\]/g;
     let dialogueMatch;
     while ((dialogueMatch = dialogueRegex.exec(response)) !== null) {
         // A função addMessage cuidará de extrair e renderizar isso.
         // Não removemos o texto aqui para que addMessage possa processá-lo.
+        createDialogueBubble(dialogueMatch[1], dialogueMatch[2], document.getElementById('chat-area'));
+        processedText = processedText.replace(dialogueMatch[0], "").trim();
     }
 
     // Regex para Resposta de Carta (não remove, apenas para garantir que não quebre)
+    // Regex para Resposta de Carta. O texto é extraído e renderizado,
+    // então removemos a tag do texto principal.
     const letterRegex = /\[LETTER_REPLY: "([^"]+)"\s*\|\s*"([^"]+)"\]/g;
     let letterMatch;
     while ((letterMatch = letterRegex.exec(response)) !== null) {
         // A função addMessage cuidará de extrair e renderizar isso.
         // Não removemos o texto aqui para que addMessage possa processá-lo.
+        createLetterReplyBubble(letterMatch[1], letterMatch[2], document.getElementById('chat-area'));
+        processedText = processedText.replace(letterMatch[0], "").trim();
     }
 
     // NOVO (Sugestão B): Regex para mudanças no estado do mundo
@@ -2143,20 +2151,20 @@ function resetGame() {
         // CORREÇÃO: Esconde o menu principal para revelar a tela de criação.
         document.getElementById('main-menu').classList.add('hidden');
         worldState = {}; // NOVO: Reseta o estado do mundo
-        localStorage.removeItem('eldoriaSave'); 
+        localStorage.removeItem('eldoriaSave');
         localCharacterProfile = null; chatMessages = []; currentEnemy = null; isInCombat = false; selectedClass = null; skillPoints = 0;
         relationships = {}; gameMode = 'singleplayer'; storyMode = 'sandbox'; mainQuest = null; sideQuests = []; discoveredEnemies = []; // NOVO: Reseta gameMode
         coins = 0; // NOVO
         attributes = { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 };
         
         document.getElementById('chat-area').innerHTML = '<div class="text-center text-gray-400 italic py-8">Crie seu personagem...</div>';
-        document.getElementById('character-name-display').textContent = '...'; 
-        document.getElementById('sidebar-char-name').textContent = '-'; 
-        document.getElementById('sidebar-char-role').textContent = '-'; 
-        document.getElementById('sidebar-char-level').textContent = '1'; 
+        document.getElementById('character-name-display').textContent = '...';
+        document.getElementById('sidebar-char-name').textContent = '-';
+        document.getElementById('sidebar-char-role').textContent = '-';
+        document.getElementById('sidebar-char-level').textContent = '1';
         document.getElementById('sidebar-char-xp').textContent = '0/100';
         document.getElementById('sidebar-char-coins').textContent = '0'; // NOVO
-        document.getElementById('sidebar-char-image').src = "https://placehold.co/64x64?text=?"; 
+        document.getElementById('sidebar-char-image').src = "https://placehold.co/64x64?text=?";
         
         // CORREÇÃO: Garante que o contêiner do jogo está visível antes de mostrar a criação de personagem.
         const gameWrapper = document.getElementById('game-wrapper');
@@ -2167,10 +2175,10 @@ function resetGame() {
         if (userInput) userInput.disabled = false;
         if (sendButton) sendButton.disabled = true;
         
-        document.getElementById('char-name-input').value = ''; 
-        document.getElementById('char-sex-input').value = ''; 
+        document.getElementById('char-name-input').value = '';
+        document.getElementById('char-sex-input').value = '';
         document.querySelectorAll('.class-card').forEach(c => c.classList.remove('selected'));
-        document.querySelectorAll('.story-mode-card').forEach(c => c.classList.remove('selected')); 
+        document.querySelectorAll('.story-mode-card').forEach(c => c.classList.remove('selected'));
         document.querySelector('.story-mode-card[data-mode="sandbox"]').classList.add('selected');
         document.querySelector('#setup-singleplayer-btn').classList.add('active'); // NOVO: Seleciona singleplayer por padrão
 
@@ -2178,11 +2186,11 @@ function resetGame() {
         gameTime = { day: 1, hour: 8 };
         updateTimeUI(); // NOVO
         
-        document.getElementById('character-setup').style.display = 'flex'; 
-        applyClassAttributes('Guerreiro'); 
-        updateClassCardImages(); 
-        updateQuestsUI(); 
-        updateRelationshipsUI(); 
+        document.getElementById('character-setup').style.display = 'flex';
+        applyClassAttributes('Guerreiro');
+        updateClassCardImages();
+        updateQuestsUI();
+        updateRelationshipsUI();
         updateEquipmentUI();
         updateReputationUI();
         updateGameModeUI(); // NOVO: Atualiza a UI do modo de jogo
@@ -2702,18 +2710,6 @@ window.addEventListener('load', async () => {
         }
     });
 
-    // NOVO (Sugestão A): Função para encontrar o nome de um NPC na mensagem do jogador
-    function findTargetNpc(text) {
-        const lowerText = text.toLowerCase();
-        const npcNames = Object.keys(relationships);
-        for (const name of npcNames) {
-            if (lowerText.includes(name.toLowerCase())) {
-                return name;
-            }
-        }
-        return null;
-    }
-
     // NOVO: Função para inicializar a conexão multiplayer
     function initializeMultiplayer() {
         const multiplayerInfo = document.getElementById('multiplayer-info');
@@ -2740,33 +2736,6 @@ window.addEventListener('load', async () => {
             console.error(`[Multiplayer] Erro no WebSocket: ${error.message}`);
             multiplayerInfo.innerHTML = '<p class="text-red-500 italic">Falha ao conectar ao servidor.</p>';
         };
-    }
-
-    function initializeGame() {
-        // Carrega configurações salvas
-        const savedSettings = localStorage.getItem('eldoriaSettings');
-        if (savedSettings) {
-            gameSettings = JSON.parse(savedSettings);
-        }
-        // Aplica configurações na UI
-        if (musicVolumeSlider) musicVolumeSlider.value = gameSettings.musicVolume;
-        if (sfxVolumeSlider) sfxVolumeSlider.value = gameSettings.sfxVolume;
-        if (musicPlayer) musicPlayer.volume.value = Tone.gainToDb(gameSettings.musicVolume * 2);
-        if(synth) synth.volume.value = Tone.gainToDb(gameSettings.sfxVolume);
-        updateDifficultyButtons();
-
-        // Mostra o botão de carregar se houver save
-        if (loadGameBtn && !localStorage.getItem('eldoriaSave')) {
-            loadGameBtn.classList.add('disabled-button');
-            loadGameBtn.disabled = true;
-        }
-
-        // Toca a música do menu
-        setMusicTrack(MUSIC_TRACKS.menu); // NOVO: Garante que a música do menu toque
-    }
-
-    function updateDifficultyButtons() {
-        document.querySelectorAll('.difficulty-button').forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-difficulty') === gameSettings.difficulty));
     }
 
     initializeGame();
