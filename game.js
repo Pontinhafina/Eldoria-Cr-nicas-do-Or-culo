@@ -307,7 +307,6 @@ function saveCharacterProfile() {
     updateObjectiveTracker(); // NOVO
     document.getElementById('chat-area').innerHTML = '';
     startInitialStory();
-    setMusicTrack('assets/music/the-epic-2-by-keys-of-moon.mp3');
     setMusicTrack(MUSIC_TRACKS.exploration);
     console.log("Character saved successfully:", localCharacterProfile);
 }
@@ -511,6 +510,18 @@ function debouncedGenerateAIResponse(userMessage, characterContext) {
     geminiDebounceTimer = setTimeout(() => {
         generateAIResponse(userMessage, characterContext);
     }, 300); // Espera 300ms antes de enviar
+}
+
+// NOVO: Função para encontrar o nome de um NPC na mensagem do jogador
+function findTargetNpc(text) {
+    const lowerText = text.toLowerCase();
+    const npcNames = Object.keys(relationships);
+    for (const name of npcNames) {
+        if (lowerText.includes(name.toLowerCase())) {
+            return name;
+        }
+    }
+    return null;
 }
 
 async function generateAIResponse(userMessage, characterContext) {
@@ -820,26 +831,20 @@ function processAIResponseForGameChanges(response) {
         processedText = processedText.replace(summaryMatch[0], "").trim();
     }
 
-    // Regex para Diálogo (não remove, apenas para garantir que não quebre)
     // Regex para Diálogo. O texto é extraído e renderizado pela função addMessage,
     // então removemos a tag para não aparecer no balão principal do Oráculo.
     const dialogueRegex = /\[DIALOGUE: "([^"]+)"\s*\|\s*"([^"]+)"\]/g;
     let dialogueMatch;
     while ((dialogueMatch = dialogueRegex.exec(response)) !== null) {
-        // A função addMessage cuidará de extrair e renderizar isso.
-        // Não removemos o texto aqui para que addMessage possa processá-lo.
         createDialogueBubble(dialogueMatch[1], dialogueMatch[2], document.getElementById('chat-area'));
         processedText = processedText.replace(dialogueMatch[0], "").trim();
     }
 
-    // Regex para Resposta de Carta (não remove, apenas para garantir que não quebre)
     // Regex para Resposta de Carta. O texto é extraído e renderizado,
     // então removemos a tag do texto principal.
     const letterRegex = /\[LETTER_REPLY: "([^"]+)"\s*\|\s*"([^"]+)"\]/g;
     let letterMatch;
     while ((letterMatch = letterRegex.exec(response)) !== null) {
-        // A função addMessage cuidará de extrair e renderizar isso.
-        // Não removemos o texto aqui para que addMessage possa processá-lo.
         createLetterReplyBubble(letterMatch[1], letterMatch[2], document.getElementById('chat-area'));
         processedText = processedText.replace(letterMatch[0], "").trim();
     }
@@ -2142,8 +2147,8 @@ function resetGame() {
         worldState = {}; // NOVO: Reseta o estado do mundo
         localStorage.removeItem('eldoriaSave');
         localCharacterProfile = null; chatMessages = []; currentEnemy = null; isInCombat = false; selectedClass = null; skillPoints = 0;
-        relationships = {}; gameMode = 'singleplayer'; storyMode = 'sandbox'; mainQuest = null; sideQuests = []; discoveredEnemies = []; // NOVO: Reseta gameMode
-        coins = 0; // NOVO
+        relationships = {}; storyMode = 'sandbox'; mainQuest = null; sideQuests = []; discoveredEnemies = [];
+        coins = 0;
         attributes = { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 };
         
         document.getElementById('chat-area').innerHTML = '<div class="text-center text-gray-400 italic py-8">Crie seu personagem...</div>';
@@ -2152,10 +2157,10 @@ function resetGame() {
         document.getElementById('sidebar-char-role').textContent = '-';
         document.getElementById('sidebar-char-level').textContent = '1';
         document.getElementById('sidebar-char-xp').textContent = '0/100';
-        document.getElementById('sidebar-char-coins').textContent = '0'; // NOVO
-        document.getElementById('sidebar-char-image').src = "https://placehold.co/64x64?text=?";
+        document.getElementById('sidebar-char-coins').textContent = '0';
+        document.getElementById('sidebar-char-image').src = "https://placehold.co/64x64/2a3245/d4af37?text=?";
         
-        // CORREÇÃO: Garante que o contêiner do jogo está visível antes de mostrar a criação de personagem.
+        // Garante que o contêiner do jogo está visível antes de mostrar a criação de personagem.
         const gameWrapper = document.getElementById('game-wrapper');
         gameWrapper.classList.remove('hidden');
         gameWrapper.classList.add('flex');
@@ -2169,27 +2174,35 @@ function resetGame() {
         document.querySelectorAll('.class-card').forEach(c => c.classList.remove('selected'));
         document.querySelectorAll('.story-mode-card').forEach(c => c.classList.remove('selected'));
         document.querySelector('.story-mode-card[data-mode="sandbox"]').classList.add('selected');
-        
+
         // Reseta o tempo
         gameTime = { day: 1, hour: 8 };
-        updateTimeUI(); // NOVO
+        updateTimeUI();
         
         document.getElementById('character-setup').style.display = 'flex';
         applyClassAttributes('Guerreiro');
         updateClassCardImages();
-        updateQuestsUI();
-        updateRelationshipsUI();
-        updateEquipmentUI();
-        updateReputationUI(); 
-        updateChatInputStatus();
-        updateTimeUI(); // NOVO
-        updateObjectiveTracker(); // NOVO
-        if (typeof updateDebugPanel === 'function') {
-            updateDebugPanel(); // NOVO
-        }
+        updateQuestsUI(); updateRelationshipsUI(); updateEquipmentUI(); updateReputationUI(); updateChatInputStatus(); updateTimeUI(); updateObjectiveTracker();
+        if (typeof updateDebugPanel === 'function') updateDebugPanel();
     }
 }
 
+// NOVO: Função para atualizar a UI do modo de jogo
+function updateGameModeUI() {
+    const singleplayerBtn = document.getElementById('singleplayer-btn');
+    const multiplayerBtn = document.getElementById('multiplayer-btn');
+    const multiplayerInfo = document.getElementById('multiplayer-info');
+
+    if (gameMode === 'multiplayer') {
+        singleplayerBtn?.classList.remove('active');
+        multiplayerBtn?.classList.add('active');
+        multiplayerInfo.innerHTML = '<p class="text-gray-400 italic">Modo multiplayer (funcionalidade de rede em desenvolvimento)</p>';
+    } else {
+        singleplayerBtn?.classList.add('active');
+        multiplayerBtn?.classList.remove('active');
+        multiplayerInfo.innerHTML = '<p class="text-gray-400 italic">Modo singleplayer ativo</p>';
+    }
+}
 // =============================================
 // NOVO: SISTEMA DE DEBUG
 // =============================================
@@ -2517,31 +2530,6 @@ async function loadGameData() {
     }
 }
 
-// =============================================
-// FUNÇÕES DE INICIALIZAÇÃO DO JOGO
-// =============================================
-function initializeGame() {
-    // Carrega configurações salvas
-    const savedSettings = localStorage.getItem('eldoriaSettings');
-    if (savedSettings) {
-        gameSettings = JSON.parse(savedSettings);
-    }
-    // Aplica configurações na UI
-    if (musicVolumeSlider) musicVolumeSlider.value = gameSettings.musicVolume;
-    if (sfxVolumeSlider) sfxVolumeSlider.value = gameSettings.sfxVolume;
-    if (musicPlayer) musicPlayer.volume.value = Tone.gainToDb(gameSettings.musicVolume * 2);
-    if(synth) synth.volume.value = Tone.gainToDb(gameSettings.sfxVolume);
-    updateDifficultyButtons();
-
-    // Mostra o botão de carregar se houver save
-    if (loadGameBtn && !localStorage.getItem('eldoriaSave')) {
-        loadGameBtn.classList.add('disabled-button');
-        loadGameBtn.disabled = true;
-    }
-
-    // Toca a música do menu
-    setMusicTrack(MUSIC_TRACKS.menu); // NOVO: Garante que a música do menu toque
-}
 
 // =============================================
 // EVENT LISTENERS E INICIALIZAÇÃO
@@ -2573,6 +2561,8 @@ window.addEventListener('load', async () => {
     const musicVolumeSlider = document.getElementById('music-volume-slider');
     const sfxVolumeSlider = document.getElementById('sfx-volume-slider');
     const debugToggleBtn = document.getElementById('debug-toggle-button');
+    const worldActionsButton = document.getElementById('world-actions-button');
+    const worldActionsDropdown = document.getElementById('world-actions-dropdown');
 
     // Attach Listeners
     if (saveCharBtn) saveCharBtn.addEventListener('click', saveCharacterProfile); else console.error("Save button not found!");
@@ -2662,13 +2652,6 @@ window.addEventListener('load', async () => {
     });
 
     // Listeners do NOVO Menu de Jogo
-    setupModal('ingame-menu-button', 'game-menu-modal');
-    document.getElementById('menu-save-game-btn')?.addEventListener('click', saveGame);
-    document.getElementById('menu-load-game-btn')?.addEventListener('click', () => {
-        if (!loadGame()) alert("Nenhum jogo salvo encontrado.");
-    });
-    document.getElementById('menu-settings-btn')?.addEventListener('click', () => document.getElementById('settings-modal').classList.remove('hidden'));
-    document.getElementById('menu-main-menu-btn')?.addEventListener('click', () => { if(confirm("Voltar ao menu principal? O progresso não salvo será perdido.")) window.location.reload(); });
 
     document.querySelectorAll('.class-card').forEach(card => {
         card.addEventListener('click', () => {
@@ -2696,18 +2679,6 @@ window.addEventListener('load', async () => {
         });
     });
 
-    // NOVO: Listeners para seleção de modo de jogo na criação de personagem
-    document.getElementById('setup-singleplayer-btn')?.addEventListener('click', () => {
-        document.getElementById('setup-singleplayer-btn').classList.add('active');
-        document.getElementById('setup-multiplayer-btn').classList.remove('active');
-    });
-    document.getElementById('setup-multiplayer-btn')?.addEventListener('click', () => {
-        document.getElementById('setup-multiplayer-btn').classList.add('active');
-        document.getElementById('setup-singleplayer-btn').classList.remove('active');
-    });
-    // --- NOVO: Lógica para o menu "Ações no Mundo" ---
-    const worldActionsButton = document.getElementById('world-actions-button');
-    const worldActionsDropdown = document.getElementById('world-actions-dropdown');
 
     if (worldActionsButton) {
         worldActionsButton.addEventListener('click', (e) => {
@@ -2721,6 +2692,33 @@ window.addEventListener('load', async () => {
             worldActionsDropdown.classList.add('hidden');
         }
     });
+
+    function initializeGame() {
+        // Carrega configurações salvas
+        const savedSettings = localStorage.getItem('eldoriaSettings');
+        if (savedSettings) {
+            gameSettings = JSON.parse(savedSettings);
+        }
+        // Aplica configurações na UI
+        if (musicVolumeSlider) musicVolumeSlider.value = gameSettings.musicVolume;
+        if (sfxVolumeSlider) sfxVolumeSlider.value = gameSettings.sfxVolume;
+        if (musicPlayer) musicPlayer.volume.value = Tone.gainToDb(gameSettings.musicVolume * 2);
+        if(synth) synth.volume.value = Tone.gainToDb(gameSettings.sfxVolume);
+        updateDifficultyButtons();
+
+        // Mostra o botão de carregar se houver save
+        if (loadGameBtn && !localStorage.getItem('eldoriaSave')) {
+            loadGameBtn.classList.add('disabled-button');
+            loadGameBtn.disabled = true;
+        }
+
+        // Toca a música do menu
+        setMusicTrack(MUSIC_TRACKS.menu); // NOVO: Garante que a música do menu toque
+    }
+
+    function updateDifficultyButtons() {
+        document.querySelectorAll('.difficulty-button').forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-difficulty') === gameSettings.difficulty));
+    }
 
     initializeGame();
 
