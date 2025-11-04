@@ -2169,8 +2169,7 @@ function resetGame() {
         document.querySelectorAll('.class-card').forEach(c => c.classList.remove('selected'));
         document.querySelectorAll('.story-mode-card').forEach(c => c.classList.remove('selected'));
         document.querySelector('.story-mode-card[data-mode="sandbox"]').classList.add('selected');
-        document.querySelector('#setup-singleplayer-btn').classList.add('active'); // NOVO: Seleciona singleplayer por padrão
-
+        
         // Reseta o tempo
         gameTime = { day: 1, hour: 8 };
         updateTimeUI(); // NOVO
@@ -2181,8 +2180,7 @@ function resetGame() {
         updateQuestsUI();
         updateRelationshipsUI();
         updateEquipmentUI();
-        updateReputationUI();
-        updateGameModeUI(); // NOVO: Atualiza a UI do modo de jogo
+        updateReputationUI(); 
         updateChatInputStatus();
         updateTimeUI(); // NOVO
         updateObjectiveTracker(); // NOVO
@@ -2519,6 +2517,31 @@ async function loadGameData() {
     }
 }
 
+// =============================================
+// FUNÇÕES DE INICIALIZAÇÃO DO JOGO
+// =============================================
+function initializeGame() {
+    // Carrega configurações salvas
+    const savedSettings = localStorage.getItem('eldoriaSettings');
+    if (savedSettings) {
+        gameSettings = JSON.parse(savedSettings);
+    }
+    // Aplica configurações na UI
+    if (musicVolumeSlider) musicVolumeSlider.value = gameSettings.musicVolume;
+    if (sfxVolumeSlider) sfxVolumeSlider.value = gameSettings.sfxVolume;
+    if (musicPlayer) musicPlayer.volume.value = Tone.gainToDb(gameSettings.musicVolume * 2);
+    if(synth) synth.volume.value = Tone.gainToDb(gameSettings.sfxVolume);
+    updateDifficultyButtons();
+
+    // Mostra o botão de carregar se houver save
+    if (loadGameBtn && !localStorage.getItem('eldoriaSave')) {
+        loadGameBtn.classList.add('disabled-button');
+        loadGameBtn.disabled = true;
+    }
+
+    // Toca a música do menu
+    setMusicTrack(MUSIC_TRACKS.menu); // NOVO: Garante que a música do menu toque
+}
 
 // =============================================
 // EVENT LISTENERS E INICIALIZAÇÃO
